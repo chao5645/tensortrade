@@ -80,7 +80,7 @@ bitfinex = Exchange("bitfinex", service=execute_order)(
 
 portfolio = Portfolio(USD, [
     Wallet(bitfinex, 10000 * USD),
-    Wallet(bitfinex, 10 * BTC)
+    Wallet(bitfinex, 0 * BTC)
 ])
 
 
@@ -106,24 +106,27 @@ env = default.create(
 
 print(env.observer.feed.next())
 
-agent = DQNAgent(env)
+from tensortrade.agents.a2c_agent import A2CAgent
+#agent = DQNAgent(env)
+agent = A2CAgent(env)
 
-#agent.train(n_steps=200, n_episodes=2, save_path="agents/")
+agent.train(n_steps=500, n_episodes=2, save_path="agents/")
 
-agent.policy_network.save(filepath="agents0")
-agent.restore(path="agents0")
+agent.save(path="agents/a2c/")
+#agent.restore(path="agents/a2c/",
+#              actor_filename= "actor_network__69681b3__20210311_115129.hdf5",
+#              critic_filename= "critic_network__69681b3__20210311_115129.hdf5")
 
 
 # Run until episode ends
 episode_reward = 0
-done = False
+done = True
 obs = env.reset()
 
 while not done:
-
     action = agent.get_action(obs)
     obs, reward, done, info = env.step(action)
     episode_reward += reward
-    print("episode_reward: ", episode_reward)
 env.render()
+
 

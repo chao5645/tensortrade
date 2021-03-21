@@ -200,6 +200,8 @@ def create_env(config):
     return env1
 
 
+ray.init(address="192.168.100.149:6379", _redis_password="5241590000000000")
+
 register_env("TradingEnv", create_env)
 
 analysis = tune.run(
@@ -213,9 +215,9 @@ analysis = tune.run(
             "window_size": 25
         },
         "log_level": "DEBUG",
-        "framework": "torch",
+        "framework": "tensorflow",
         "ignore_worker_failures": True,
-        "num_workers": 5,
+        "num_workers": 15,
         "num_gpus": 0,
         "clip_rewards": True,
         "lr": 8e-6,
