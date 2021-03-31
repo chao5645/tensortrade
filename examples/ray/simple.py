@@ -133,8 +133,8 @@ class PositionChangeChart(Renderer):
         axs[0].set_title("Trading Chart")
 
         performance = pd.DataFrame.from_dict(env.action_scheme.portfolio.performance, orient='index')
-        performance.plot(ax)
-
+        performance.plot(ax=axs[1])
+        axs[1].set_title("Net Worth")
         plt.show()
 
 
