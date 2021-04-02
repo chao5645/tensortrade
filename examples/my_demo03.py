@@ -110,7 +110,7 @@ from tensortrade.agents.a2c_agent import A2CAgent
 #agent = DQNAgent(env)
 agent = A2CAgent(env)
 
-agent.train(n_steps=500, n_episodes=2, save_path="agents/")
+agent.train(n_steps=50, n_episodes=2, save_path="agents/")
 
 agent.save(path="agents/a2c/")
 #agent.restore(path="agents/a2c/",

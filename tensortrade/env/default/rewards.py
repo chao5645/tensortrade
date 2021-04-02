@@ -190,6 +190,8 @@ class PBR(TensorTradeRewardScheme):
         super().__init__()
         self.position = -1
 
+        self.pre_networth = 0
+
         r = Stream.sensor(price, lambda p: p.value, dtype="float").diff()
         position = Stream.sensor(self, lambda rs: rs.position, dtype="float")
 
@@ -198,11 +200,23 @@ class PBR(TensorTradeRewardScheme):
         self.feed = DataFeed([reward])
         self.feed.compile()
 
-    def on_action(self, action: int) -> None:
-        self.position = -1 if action == 0 else 1
+    def on_action(self, action: int, portfolio: 'Portfolio') -> None:
+
+        self.pre_networth = portfolio.net_worth
+        actStr = "NULL"
+        if action == 1:
+            actStr = "BUY"
+        elif action == 2:
+            actStr = "SELL"
+        else:
+            actStr = "HOLD"
+
+        #print("Action: {}  ".format(actStr))
 
     def get_reward(self, portfolio: 'Portfolio') -> float:
-        return self.feed.next()["reward"]
+        reward_in = portfolio.net_worth - self.pre_networth
+        #print("Reward: {}  PreNet: {}  Networth: {}".format(reward_in, self.pre_networth, portfolio.net_worth))
+        return reward_in
 
     def reset(self) -> None:
         """Resets the `position` and `feed` of the reward scheme."""

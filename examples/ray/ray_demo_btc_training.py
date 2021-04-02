@@ -77,11 +77,11 @@ from tensortrade.oms.instruments import USD, BTC
 from tensortrade.oms.wallets import Wallet, Portfolio
 
 def load_csv(filename):
-    df = pd.read_csv('../data/' + filename, skiprows=1)
-    df.drop(columns=['symbol', 'volume_btc'], inplace=True)
+    df = pd.read_csv('../data/' + filename, skiprows=0)
+    #df.drop(columns=['symbol', 'volume_btc'], inplace=True)
 
     # Fix timestamp form "2019-10-17 09-AM" to "2019-10-17 09-00-00 AM"
-    df['date'] = df['date'].str[:14] + '00-00 ' + df['date'].str[-2:]
+    #df['date'] = df['date'].str[:14] + '00-00 ' + df['date'].str[-2:]
 
     # Convert the date column type from string to datetime for proper sorting.
     df['date'] = pd.to_datetime(df['date'])
@@ -93,6 +93,7 @@ def load_csv(filename):
 
     # Format timestamps as you want them to appear on the chart buy/sell marks.
     df['date'] = df['date'].dt.strftime('%Y-%m-%d %I:%M %p')
+    print(df)
 
     return df
 
@@ -108,8 +109,9 @@ chart_renderer = PlotlyTradingChart(
 
 def create_env(config):
 
-    df = load_csv('Coinbase_BTCUSD_1h.csv')
-    df.head()
+    df = load_csv('btc_usdt_m5_history_training.csv')
+    print(df.head(5))
+
 
     dataset = ta.add_all_ta_features(df, 'open', 'high', 'low', 'close', 'volume', fillna=True)
     dataset.head(3)
@@ -152,7 +154,7 @@ def create_env(config):
 
     reward_scheme = default.rewards.PBR(price=p)
 
-    action_scheme = default.actions.BSH(
+    action_scheme = default.actions.BSHEX(
         cash=cash,
         asset=asset
     ).attach(reward_scheme)
@@ -179,7 +181,7 @@ def create_env(config):
         portfolio=portfolio,
         #renderer=PositionChangeChart(),
         renderer=default.renderers.PlotlyTradingChart(),
-        action_scheme="managed-risk",
+        action_scheme=action_scheme,
         reward_scheme=reward_scheme,
         renderer_feed=renderer_feed_ptc,
         window_size=config["window_size"],
@@ -191,7 +193,7 @@ def create_env(config):
         portfolio=portfolio,
         #renderer=PositionChangeChart(),
         renderer=default.renderers.PlotlyTradingChart(),
-        action_scheme="managed-risk",
+        action_scheme=action_scheme,
         reward_scheme=default.rewards.SimpleProfit(window_size=10),
         renderer_feed=renderer_feed_ptc,
         window_size=config["window_size"],
@@ -207,7 +209,7 @@ register_env("TradingEnv", create_env)
 analysis = tune.run(
     "PPO",
     stop={
-        "episode_reward_mean": 200
+        "episode_reward_mean": 10000 * 100
     },
     config={
         "env": "TradingEnv",
@@ -263,7 +265,7 @@ agent = ppo.PPOTrainer(
         "log_level": "DEBUG",
         "ignore_worker_failures": True,
         "num_workers": 1,
-        "num_gpus": 0,
+        "num_gpus": 1,
         "clip_rewards": True,
         "lr": 8e-6,
         "lr_schedule": [

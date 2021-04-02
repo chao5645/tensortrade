@@ -74,7 +74,7 @@ analysis = tune.run(
         "framework": "torch",
         "ignore_worker_failures": True,
         "num_workers": 1,
-        "num_gpus": 1,
+        "num_gpus": 0,
         "clip_rewards": True,
         "lr": 8e-6,
         "lr_schedule": [

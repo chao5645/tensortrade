@@ -146,7 +146,7 @@ def create_env(config):
 
     reward_scheme = default.rewards.PBR(price=p)
 
-    action_scheme = default.actions.BSH(
+    action_scheme = default.actions.BSHEX(
         cash=cash,
         asset=asset
     ).attach(reward_scheme)
@@ -214,7 +214,7 @@ agent = ppo.PPOTrainer(
     }
 )
 
-checkpoint_path = "result/ppo/PPO_TradingEnv_c2c0b_00000_0_2021-03-31_17-30-41/checkpoint_1/checkpoint-1"
+checkpoint_path = "result\\PPO\\PPO_TradingEnv_a7d72_00000_0_2021-04-02_18-31-59\\checkpoint_45\\checkpoint-45"
 agent.restore(checkpoint_path)
 
 # Instantiate the environment

@@ -160,11 +160,68 @@ class BSH(TensorTradeActionScheme):
             if src.balance == 0:  # We need to check, regardless of the proposed order, if we have balance in 'src'
                 return []  # Otherwise just return an empty order list
 
-            order = proportion_order(portfolio, src, tgt, 1.0)
+            order = proportion_order(portfolio, src, tgt, 0.2)
             self.action = action
 
         for listener in self.listeners:
             listener.on_action(action)
+
+        return [order]
+
+    def reset(self):
+        super().reset()
+        self.action = 0
+
+class BSHEX(TensorTradeActionScheme):
+    """A simple discrete action scheme where the only options are to buy, sell,
+    or hold.
+
+    Parameters
+    ----------
+    cash : `Wallet`
+        The wallet to hold funds in the base intrument.
+    asset : `Wallet`
+        The wallet to hold funds in the quote instrument.
+    """
+
+    registered_name = "bshex"
+
+    def __init__(self, cash: 'Wallet', asset: 'Wallet'):
+        super().__init__()
+        self.cash = cash
+        self.asset = asset
+
+        self.listeners = []
+        self.action = 0
+
+    @property
+    def action_space(self):
+        return Discrete(3)
+
+    def attach(self, listener):
+        self.listeners += [listener]
+        return self
+
+    def get_orders(self, action: int, portfolio: 'Portfolio') -> 'Order':
+        order = None
+
+        if action == 1: # Buy coin
+            src = self.cash
+            tgt = self.asset
+            if src.balance <= 10:  # We need to check, regardless of the proposed order, if we have balance in 'src'
+                return []  # Otherwise just return an empty order list
+            order = proportion_order(portfolio, src, tgt, 0.1)
+        elif action == 2: # Sell coin
+            src = self.asset
+            tgt = self.cash
+            if src.balance <= 0.0001:  # We need to check, regardless of the proposed order, if we have balance in 'src'
+                return []  # Otherwise just return an empty order list
+            order = proportion_order(portfolio, src, tgt, 0.1)
+        else:
+            pass # No action
+
+        for listener in self.listeners:
+            listener.on_action(action, portfolio)
 
         return [order]
 

@@ -114,10 +114,10 @@ from tensortrade.agents import DQNAgent, A2CAgent
 agent = A2CAgent(env)
 
 # Set render_interval to None to render at episode ends only
-agent.train(n_episodes=2, n_steps=1000, render_interval=500, save_path="agents/")
+agent.train(n_episodes=2, n_steps=200, render_interval=100, save_path="agents/")
 
 #agent.policy_network.save(filepath="agents02")
-agent.save(path="agents0023")
+agent.save(path="agents-result/a2c")
 
 #agent.restore(path="agents0023policy_network__d538fde__20210310_231131.hdf5")
 
