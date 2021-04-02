@@ -178,8 +178,8 @@ def create_env(config):
         feed=feed,
         portfolio=portfolio,
         #renderer=PositionChangeChart(),
-        renderer=PlotlyTradingChart(save_format='html'),
-        action_scheme=action_scheme,
+        renderer=default.renderers.PlotlyTradingChart(),
+        action_scheme="managed-risk",
         reward_scheme=reward_scheme,
         renderer_feed=renderer_feed_ptc,
         window_size=config["window_size"],
@@ -190,24 +190,24 @@ def create_env(config):
         feed=feed,
         portfolio=portfolio,
         #renderer=PositionChangeChart(),
-        renderer=PlotlyTradingChart(save_format='html'),
-        action_scheme=action_scheme,
+        renderer=default.renderers.PlotlyTradingChart(),
+        action_scheme="managed-risk",
         reward_scheme=default.rewards.SimpleProfit(window_size=10),
         renderer_feed=renderer_feed_ptc,
         window_size=config["window_size"],
         max_allowed_loss=0.1
     )
-    return env1
+    return env0
 
 
-ray.init(address="192.168.100.149:6379", _redis_password="5241590000000000")
+ray.init()
 
 register_env("TradingEnv", create_env)
 
 analysis = tune.run(
     "PPO",
     stop={
-        "episode_reward_mean": 5000
+        "episode_reward_mean": 200
     },
     config={
         "env": "TradingEnv",
@@ -215,9 +215,9 @@ analysis = tune.run(
             "window_size": 25
         },
         "log_level": "DEBUG",
-        "framework": "tensorflow",
+        "framework": "torch",
         "ignore_worker_failures": True,
-        "num_workers": 15,
+        "num_workers": 2,
         "num_gpus": 0,
         "clip_rewards": True,
         "lr": 8e-6,

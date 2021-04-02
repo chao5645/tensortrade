@@ -214,7 +214,7 @@ agent = ppo.PPOTrainer(
     }
 )
 
-checkpoint_path = "result/ppo/PPO_TradingEnv_cc78e_00000_0_2021-03-14_18-41-14/checkpoint_28/checkpoint-28"
+checkpoint_path = "result/ppo/PPO_TradingEnv_c2c0b_00000_0_2021-03-31_17-30-41/checkpoint_1/checkpoint-1"
 agent.restore(checkpoint_path)
 
 # Instantiate the environment
