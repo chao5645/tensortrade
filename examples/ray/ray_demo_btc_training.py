@@ -77,7 +77,7 @@ from tensortrade.oms.instruments import USD, BTC
 from tensortrade.oms.wallets import Wallet, Portfolio
 
 def load_csv(filename):
-    df = pd.read_csv('../data/' + filename, skiprows=0)
+    df = pd.read_csv('../data/' + filename, skiprows=0, index_col=0)
     #df.drop(columns=['symbol', 'volume_btc'], inplace=True)
 
     # Fix timestamp form "2019-10-17 09-AM" to "2019-10-17 09-00-00 AM"
@@ -109,7 +109,7 @@ chart_renderer = PlotlyTradingChart(
 
 def create_env(config):
 
-    df = load_csv('btc_usdt_m5_history_training.csv')
+    df = load_csv('btc_usdt_m5_history.csv')
     print(df.head(5))
 
 
