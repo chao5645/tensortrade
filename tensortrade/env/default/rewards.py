@@ -190,6 +190,51 @@ class PBR(TensorTradeRewardScheme):
         super().__init__()
         self.position = -1
 
+        r = Stream.sensor(price, lambda p: p.value, dtype="float").diff()
+        position = Stream.sensor(self, lambda rs: rs.position, dtype="float")
+
+        reward = (position * r).fillna(0).rename("reward")
+
+        self.feed = DataFeed([reward])
+        self.feed.compile()
+
+    def on_action(self, action: int) -> None:
+        self.position = -1 if action == 0 else 1
+
+    def get_reward(self, portfolio: 'Portfolio') -> float:
+        reward_ = self.feed.next()["reward"]
+        #print("Reward: {}".format(reward_))
+        return reward_
+
+    def reset(self) -> None:
+        """Resets the `position` and `feed` of the reward scheme."""
+        self.position = -1
+        self.feed.reset()
+
+from tensortrade.oms.orders import TradeSide
+class PBREX(TensorTradeRewardScheme):
+    """A reward scheme for position-based returns.
+
+    * Let :math:`p_t` denote the price at time t.
+    * Let :math:`x_t` denote the position at time t.
+    * Let :math:`R_t` denote the reward at time t.
+
+    Then the reward is defined as,
+    :math:`R_{t} = (p_{t} - p_{t-1}) \cdot x_{t}`.
+
+    Parameters
+    ----------
+    price : `Stream`
+        The price stream to use for computing rewards.
+    """
+
+    registered_name = "pbr"
+
+    def __init__(self, price: 'Stream') -> None:
+        super().__init__()
+        self.position = 0
+        self.price = 0
+
         self.pre_networth = 0
 
         r = Stream.sensor(price, lambda p: p.value, dtype="float").diff()
@@ -199,24 +244,13 @@ class PBR(TensorTradeRewardScheme):
 
         self.feed = DataFeed([reward])
         self.feed.compile()
-
-    def on_action(self, action: int, portfolio: 'Portfolio') -> None:
-
-        self.pre_networth = portfolio.net_worth
-        actStr = "NULL"
-        if action == 1:
-            actStr = "BUY"
-        elif action == 2:
-            actStr = "SELL"
-        else:
-            actStr = "HOLD"
-
-        #print("Action: {}  ".format(actStr))
+    def on_action(self, side: TradeSide) -> None:
+        pass
 
     def get_reward(self, portfolio: 'Portfolio') -> float:
-        reward_in = portfolio.net_worth - self.pre_networth
-        #print("Reward: {}  PreNet: {}  Networth: {}".format(reward_in, self.pre_networth, portfolio.net_worth))
-        return reward_in
+        net_worths = [nw['net_worth'] for nw in portfolio.performance.values()]
+        reward = 0 if len(net_worths) < 2 else net_worths[-1] - net_worths[-2]
+        return reward
 
     def reset(self) -> None:
         """Resets the `position` and `feed` of the reward scheme."""

@@ -262,8 +262,10 @@ class SimpleOrders(TensorTradeActionScheme):
                  trade_type: 'TradeType' = TradeType.MARKET,
                  order_listener: 'OrderListener' = None,
                  min_order_pct: float = 0.02,
-                 min_order_abs: float = 0.00) -> None:
+                 min_order_abs: float = 0.1) -> None:
         super().__init__()
+        self.action = None
+        self.listeners = []
         self.min_order_pct = min_order_pct
         self.min_order_abs = min_order_abs
         criteria = self.default('criteria', criteria)
@@ -300,6 +302,10 @@ class SimpleOrders(TensorTradeActionScheme):
             self._action_space = Discrete(len(self.actions))
         return self._action_space
 
+    def attach(self, listener):
+        self.listeners += [listener]
+        return self
+
     def get_orders(self,
                    action: int,
                    portfolio: 'Portfolio') -> 'List[Order]':
@@ -318,6 +324,7 @@ class SimpleOrders(TensorTradeActionScheme):
 
         quantity = (size * instrument).quantize()
 
+        #print("networth: {}, action: {}, instrument: {}, balance: {}, size: {}".format(portfolio.net_worth, action, instrument, balance, size))
         if size < 10 ** -instrument.precision \
                 or size < self.min_order_pct * portfolio.net_worth \
                 or size < self.min_order_abs:
@@ -335,9 +342,14 @@ class SimpleOrders(TensorTradeActionScheme):
             portfolio=portfolio
         )
 
+        self.action = side
+
+        for listener in self.listeners:
+            listener.on_action(side)
+
         if self._order_listener is not None:
             order.attach(self._order_listener)
-
+        #print("Order: {}".format(order))
         return [order]
 
 

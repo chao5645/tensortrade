@@ -19,55 +19,7 @@ import matplotlib.pyplot as plt
 
 from tensortrade.env.generic import Renderer
 
-
-class PositionChangeChart(Renderer):
-
-    def __init__(self, color: str = "orange"):
-        self.color = "orange"
-
-    def render(self, env, **kwargs):
-        history = pd.DataFrame(env.observer.renderer_history)
-
-        actions = list(history.action)
-        p = list(history.price)
-
-        buy = {}
-        sell = {}
-
-        for i in range(len(actions) - 1):
-            a1 = actions[i]
-            a2 = actions[i + 1]
-
-            if a1 != a2:
-                if a1 == 0 and a2 == 1:
-                    buy[i] = p[i]
-                else:
-                    sell[i] = p[i]
-
-        buy = pd.Series(buy)
-        sell = pd.Series(sell)
-
-        fig, axs = plt.subplots(1, 2, figsize=(60, 20))
-
-        fig.suptitle("Performance")
-
-        axs[0].plot(np.arange(len(p)), p, label="price", color=self.color)
-        axs[0].scatter(buy.index, buy.values, marker="^", color="green")
-        axs[0].scatter(sell.index, sell.values, marker="^", color="red")
-        axs[0].set_title("Trading Chart")
-
-        performance = pd.DataFrame.from_dict(env.action_scheme.portfolio.performance, orient='index')
-        performance.plot(ax=axs[1])
-        axs[1].set_title("Net Worth")
-
-        plt.show()
-
-
-
-
-
 import ta
-
 import pandas as pd
 
 from tensortrade.feed.core import Stream, DataFeed, NameSpace
@@ -77,11 +29,11 @@ from tensortrade.oms.instruments import USD, BTC
 from tensortrade.oms.wallets import Wallet, Portfolio
 
 def load_csv(filename):
-    df = pd.read_csv('../data/' + filename, skiprows=1)
-    df.drop(columns=['symbol', 'volume_btc'], inplace=True)
+    df = pd.read_csv('../data/' + filename, skiprows=0, index_col=0)
+    #df.drop(columns=['symbol', 'volume_btc'], inplace=True)
 
     # Fix timestamp form "2019-10-17 09-AM" to "2019-10-17 09-00-00 AM"
-    df['date'] = df['date'].str[:14] + '00-00 ' + df['date'].str[-2:]
+    #df['date'] = df['date'].str[:14] + '00-00 ' + df['date'].str[-2:]
 
     # Convert the date column type from string to datetime for proper sorting.
     df['date'] = pd.to_datetime(df['date'])
@@ -93,6 +45,7 @@ def load_csv(filename):
 
     # Format timestamps as you want them to appear on the chart buy/sell marks.
     df['date'] = df['date'].dt.strftime('%Y-%m-%d %I:%M %p')
+    print(df)
 
     return df
 
@@ -108,16 +61,19 @@ chart_renderer = PlotlyTradingChart(
 
 def create_env(config):
 
-    df = load_csv('Coinbase_BTCUSD_1h.csv')
-    dataset = ta.add_all_ta_features(df, 'open', 'high', 'low', 'close', 'volume', fillna=True)
+    df = load_csv('btc_usdt_m5_history.csv')
 
+    dataset = ta.add_trend_ta(df,'high', 'low', 'close', fillna=True)
+    dataset = ta.add_volume_ta(dataset,'high', 'low', 'close', 'volume', fillna=True)
+    #dataset = ta.add_volume_ta(dataset, 'high', 'low', 'close', 'volume', fillna=True)
+    #dataset = ta.add_volatility_ta(dataset, 'high', 'low', 'close', fillna=True)
     price_history = dataset[['date', 'open', 'high', 'low', 'close', 'volume']]  # chart data
     dataset.drop(columns=['date', 'open', 'high', 'low', 'close', 'volume'], inplace=True)
 
     with NameSpace("bitfinex"):
         streams = [Stream.source(dataset[c].tolist(), dtype="float").rename(c) for c in dataset.columns]
 
-    feed_out = DataFeed(streams)
+    feed_ta_features = DataFeed(streams)
 
 
 
@@ -136,16 +92,7 @@ def create_env(config):
         asset
     ])
 
-    feed = DataFeed([
-        p,
-        p.rolling(window=10).mean().rename("fast"),
-        p.rolling(window=50).mean().rename("medium"),
-        p.rolling(window=100).mean().rename("slow"),
-        p.log().diff().fillna(0).rename("lr")
-    ])
-
     reward_scheme = default.rewards.PBR(price=p)
-
     action_scheme = default.actions.BSHEX(
         cash=cash,
         asset=asset
@@ -166,18 +113,17 @@ def create_env(config):
     ])
 
     env = default.create(
-        feed=feed,
+        feed=feed_ta_features,
         portfolio=portfolio,
         #renderer=PositionChangeChart(),
-        renderer=PlotlyTradingChart(save_format='html'),
+        renderer=default.renderers.PlotlyTradingChart(),
         action_scheme=action_scheme,
         reward_scheme=reward_scheme,
         renderer_feed=renderer_feed_ptc,
         window_size=config["window_size"],
-        max_allowed_loss=0.6
+        max_allowed_loss=0.1
     )
     return env
-
 
 register_env("TradingEnv", create_env)
 
@@ -214,7 +160,7 @@ agent = ppo.PPOTrainer(
     }
 )
 
-checkpoint_path = "result\\PPO\\PPO_TradingEnv_a7d72_00000_0_2021-04-02_18-31-59\\checkpoint_45\\checkpoint-45"
+checkpoint_path = "result\\PPO\\PPO_TradingEnv_54683_00000_0_2021-04-04_08-33-09\\checkpoint_100\\checkpoint-100"
 agent.restore(checkpoint_path)
 
 # Instantiate the environment
@@ -232,6 +178,6 @@ while not done:
     obs, reward, done, info = env_test.step(action)
     episode_reward += reward
 
-    print("Total reward: ", episode_reward)
+    print("Info: ", info)
 
 env_test.render()
