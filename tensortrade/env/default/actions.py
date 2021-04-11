@@ -306,6 +306,15 @@ class SimpleOrders(TensorTradeActionScheme):
         self.listeners += [listener]
         return self
 
+    import logging
+    def printStackInfo(self):
+        try:
+            1 / 0  # 触发异常
+        except BaseException as e:
+            logging.exception(e)  # 方式2
+        finally:
+            pass
+
     def get_orders(self,
                    action: int,
                    portfolio: 'Portfolio') -> 'List[Order]':
@@ -320,6 +329,15 @@ class SimpleOrders(TensorTradeActionScheme):
 
         balance = wallet.balance.as_float()
         size = (balance * proportion)
+
+        printStackInfo()
+
+
+        if size.__float__() * float(ep.price) < 100.0:
+            size = balance
+        elif balance.__float__() < 0.1:
+            return []
+
         size = min(balance, size)
 
         quantity = (size * instrument).quantize()
@@ -341,6 +359,8 @@ class SimpleOrders(TensorTradeActionScheme):
             end=self.clock.step + duration if duration else None,
             portfolio=portfolio
         )
+
+
 
         self.action = side
 

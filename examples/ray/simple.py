@@ -160,7 +160,6 @@ def create_env(config):
     x = np.arange(0, 2*np.pi, 2*np.pi / 1001)
     y = 50*np.sin(3*x) + 100
 
-    x = np.arange(0, 2*np.pi, 2*np.pi / 1000)
     p = Stream.source(y, dtype="float").rename("USD-TTC")
 
     bitfinex = Exchange("bitfinex", service=execute_order)(

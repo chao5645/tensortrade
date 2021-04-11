@@ -177,7 +177,7 @@ def create_env(config):
     colprefix = ""
     # MACD
     indicator_macd = MACD(
-        close=df['close'], window_slow=26, window_fast=12, window_sign=9, fillna=fillna
+        close=df['close'], window_slow=26, window_fast=12, window_sign=9, fillna=True
     )
     df[f"{colprefix}trend_macd"] = indicator_macd.macd()
     df[f"{colprefix}trend_macd_signal"] = indicator_macd.macd_signal()
@@ -250,9 +250,7 @@ register_env("TradingEnv", create_env_sin)
 
 analysis = tune.run(
     "PPO",
-    stop={
-        "episode_reward_mean": 10000 * 2
-    },
+    stop={"training_iteration": 200},
     config={
         "env": "TradingEnv",
         "env_config": {
@@ -261,7 +259,7 @@ analysis = tune.run(
         "log_level": "DEBUG",
         "framework": "torch",
         "ignore_worker_failures": True,
-        "num_workers": 1,
+        "num_workers": 2    ,
         "num_gpus": 0,
         "clip_rewards": True,
         "lr": 8e-6,

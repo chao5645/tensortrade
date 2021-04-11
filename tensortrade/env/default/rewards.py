@@ -228,7 +228,7 @@ class PBREX(TensorTradeRewardScheme):
         The price stream to use for computing rewards.
     """
 
-    registered_name = "pbr"
+    registered_name = "pbrex"
 
     def __init__(self, price: 'Stream') -> None:
         super().__init__()
