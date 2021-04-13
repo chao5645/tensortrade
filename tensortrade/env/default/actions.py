@@ -160,68 +160,11 @@ class BSH(TensorTradeActionScheme):
             if src.balance == 0:  # We need to check, regardless of the proposed order, if we have balance in 'src'
                 return []  # Otherwise just return an empty order list
 
-            order = proportion_order(portfolio, src, tgt, 0.2)
+            order = proportion_order(portfolio, src, tgt, 1.0)
             self.action = action
 
         for listener in self.listeners:
             listener.on_action(action)
-
-        return [order]
-
-    def reset(self):
-        super().reset()
-        self.action = 0
-
-class BSHEX(TensorTradeActionScheme):
-    """A simple discrete action scheme where the only options are to buy, sell,
-    or hold.
-
-    Parameters
-    ----------
-    cash : `Wallet`
-        The wallet to hold funds in the base intrument.
-    asset : `Wallet`
-        The wallet to hold funds in the quote instrument.
-    """
-
-    registered_name = "bshex"
-
-    def __init__(self, cash: 'Wallet', asset: 'Wallet'):
-        super().__init__()
-        self.cash = cash
-        self.asset = asset
-
-        self.listeners = []
-        self.action = 0
-
-    @property
-    def action_space(self):
-        return Discrete(3)
-
-    def attach(self, listener):
-        self.listeners += [listener]
-        return self
-
-    def get_orders(self, action: int, portfolio: 'Portfolio') -> 'Order':
-        order = None
-
-        if action == 1: # Buy coin
-            src = self.cash
-            tgt = self.asset
-            if src.balance <= 10:  # We need to check, regardless of the proposed order, if we have balance in 'src'
-                return []  # Otherwise just return an empty order list
-            order = proportion_order(portfolio, src, tgt, 0.1)
-        elif action == 2: # Sell coin
-            src = self.asset
-            tgt = self.cash
-            if src.balance <= 0.0001:  # We need to check, regardless of the proposed order, if we have balance in 'src'
-                return []  # Otherwise just return an empty order list
-            order = proportion_order(portfolio, src, tgt, 0.1)
-        else:
-            pass # No action
-
-        for listener in self.listeners:
-            listener.on_action(action, portfolio)
 
         return [order]
 
@@ -262,10 +205,8 @@ class SimpleOrders(TensorTradeActionScheme):
                  trade_type: 'TradeType' = TradeType.MARKET,
                  order_listener: 'OrderListener' = None,
                  min_order_pct: float = 0.02,
-                 min_order_abs: float = 0.1) -> None:
+                 min_order_abs: float = 0.00) -> None:
         super().__init__()
-        self.action = None
-        self.listeners = []
         self.min_order_pct = min_order_pct
         self.min_order_abs = min_order_abs
         criteria = self.default('criteria', criteria)
@@ -302,19 +243,6 @@ class SimpleOrders(TensorTradeActionScheme):
             self._action_space = Discrete(len(self.actions))
         return self._action_space
 
-    def attach(self, listener):
-        self.listeners += [listener]
-        return self
-
-    import logging
-    def printStackInfo(self):
-        try:
-            1 / 0  # 触发异常
-        except BaseException as e:
-            logging.exception(e)  # 方式2
-        finally:
-            pass
-
     def get_orders(self,
                    action: int,
                    portfolio: 'Portfolio') -> 'List[Order]':
@@ -329,20 +257,10 @@ class SimpleOrders(TensorTradeActionScheme):
 
         balance = wallet.balance.as_float()
         size = (balance * proportion)
-
-        printStackInfo()
-
-
-        if size.__float__() * float(ep.price) < 100.0:
-            size = balance
-        elif balance.__float__() < 0.1:
-            return []
-
         size = min(balance, size)
 
         quantity = (size * instrument).quantize()
 
-        #print("networth: {}, action: {}, instrument: {}, balance: {}, size: {}".format(portfolio.net_worth, action, instrument, balance, size))
         if size < 10 ** -instrument.precision \
                 or size < self.min_order_pct * portfolio.net_worth \
                 or size < self.min_order_abs:
@@ -360,16 +278,9 @@ class SimpleOrders(TensorTradeActionScheme):
             portfolio=portfolio
         )
 
-
-
-        self.action = side
-
-        for listener in self.listeners:
-            listener.on_action(side)
-
         if self._order_listener is not None:
             order.attach(self._order_listener)
-        #print("Order: {}".format(order))
+
         return [order]
 
 

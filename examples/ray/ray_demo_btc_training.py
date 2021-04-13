@@ -212,17 +212,13 @@ def create_env(config):
         asset
     ])
 
-    reward_scheme = default.rewards.PBR(price=p)
+    reward_scheme = default.rewards.SimpleProfit(window_size=12)
     #action_scheme = default.actions.BSHEX(
     #    cash=cash,
     #    asset=asset
     #).attach(reward_scheme)
     action_scheme = default.actions.SimpleOrders(trade_sizes=3)
 
-    renderer_feed = DataFeed([
-        Stream.source(price_list, dtype="float").rename("price"),
-        Stream.sensor(action_scheme, lambda s: s.action, dtype="float").rename("action")
-    ])
 
     renderer_feed_ptc = DataFeed([
         Stream.source(list(price_history["date"])).rename("date"),
@@ -246,11 +242,11 @@ def create_env(config):
     )
     return env
 
-register_env("TradingEnv", create_env_sin)
+register_env("TradingEnv", create_env)
 
 analysis = tune.run(
     "PPO",
-    stop={"training_iteration": 200},
+    stop={"training_iteration": 100},
     config={
         "env": "TradingEnv",
         "env_config": {
@@ -280,7 +276,7 @@ analysis = tune.run(
     },
     checkpoint_freq=20,
     checkpoint_at_end=True,
-    local_dir="result"
+    local_dir=".\\result"
 )
 
 import ray.rllib.agents.ppo as ppo

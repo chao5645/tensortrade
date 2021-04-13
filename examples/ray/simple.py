@@ -208,7 +208,8 @@ def create_env(config):
 
 register_env("TradingEnv", create_env)
 
-
+ray.init()
+'''
 analysis = tune.run(
     "PPO",
     stop={
@@ -244,15 +245,17 @@ analysis = tune.run(
     checkpoint_at_end=True
 )
 
-
-import ray.rllib.agents.ppo as ppo
-
 # Get checkpoint
 checkpoints = analysis.get_trial_checkpoints_paths(
     trial=analysis.get_best_trial("episode_reward_mean", mode='min'),
     metric="episode_reward_mean"
 )
-checkpoint_path = checkpoints[0][0]
+
+'''
+
+
+checkpoint_path = "C:\\Users\\xichao.chen\\ray_results\\PPO\\PPO_TradingEnv_6292d_00000_0_2021-04-12_21-24-18\\checkpoint_260\\checkpoint-260"
+import ray.rllib.agents.ppo as ppo
 
 # Restore agent
 agent = ppo.PPOTrainer(
@@ -300,5 +303,4 @@ while not done:
     action = agent.compute_action(obs)
     obs, reward, done, info = env.step(action)
     episode_reward += reward
-
 env.render()
