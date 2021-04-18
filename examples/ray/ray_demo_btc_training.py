@@ -45,7 +45,6 @@ def load_csv(filename):
 
     # Format timestamps as you want them to appear on the chart buy/sell marks.
     df['date'] = df['date'].dt.strftime('%Y-%m-%d %I:%M %p')
-    print(df)
 
     return df
 
@@ -190,6 +189,7 @@ def create_env(config):
     price_history = df[['date', 'open', 'high', 'low', 'close', 'volume']]  # chart data
     df.drop(columns=['date', 'open', 'high', 'low', 'close', 'volume'], inplace=True)
 
+    print(df.head(5))
     with NameSpace("bitfinex"):
         streams = [Stream.source(df[c].tolist(), dtype="float").rename(c) for c in df.columns]
 
@@ -212,7 +212,7 @@ def create_env(config):
         asset
     ])
 
-    reward_scheme = default.rewards.SimpleProfit(window_size=12)
+    reward_scheme = default.rewards.SimpleProfit(window_size=1)
     #action_scheme = default.actions.BSHEX(
     #    cash=cash,
     #    asset=asset

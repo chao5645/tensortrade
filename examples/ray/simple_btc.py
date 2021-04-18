@@ -1,5 +1,3 @@
-import tensorflow as tf
-tf.compat.v1.disable_eager_execution()
 from tensortrade.oms.instruments import Instrument
 
 USD = Instrument("USD", 2, "U.S. Dollar")
@@ -20,6 +18,26 @@ from tensortrade.oms.orders import (
     TradeType
 )
 
+def load_csv(filename):
+    df = pd.read_csv('../data/' + filename, skiprows=0, index_col=0)
+    #df.drop(columns=['symbol', 'volume_btc'], inplace=True)
+
+    # Fix timestamp form "2019-10-17 09-AM" to "2019-10-17 09-00-00 AM"
+    #df['date'] = df['date'].str[:14] + '00-00 ' + df['date'].str[-2:]
+
+    # Convert the date column type from string to datetime for proper sorting.
+    df['date'] = pd.to_datetime(df['date'])
+
+    # Make sure historical prices are sorted chronologically, oldest first.
+    df.sort_values(by='date', ascending=True, inplace=True)
+
+    df.reset_index(drop=True, inplace=True)
+
+    # Format timestamps as you want them to appear on the chart buy/sell marks.
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d %I:%M %p')
+    print(df)
+
+    return df
 
 class BSH(TensorTradeActionScheme):
 
@@ -85,7 +103,10 @@ class PBR(TensorTradeRewardScheme):
         self.position = -1 if action == 0 else 1
 
     def get_reward(self, portfolio: 'Portfolio'):
-        return self.feed.next()["reward"]
+        net_worths = [nw['net_worth'] for nw in portfolio.performance.values()]
+        reward = 0 if len(net_worths) < 2 else net_worths[-1] - net_worths[-2]
+        return reward
+        # return self.feed.next()["reward"]
 
     def reset(self):
         self.position = -1
@@ -136,6 +157,7 @@ class PositionChangeChart(Renderer):
 
 
         performance = pd.DataFrame.from_dict(env.action_scheme.portfolio.performance, orient='index')
+        performance.to_csv("./performance.csv")
         performance.plot(ax=axs[1])
         axs[1].set_title("Net Worth")
         plt.show()
@@ -155,12 +177,13 @@ from tensortrade.feed.core import DataFeed, Stream
 from tensortrade.oms.exchanges import Exchange
 from tensortrade.oms.services.execution.simulated import execute_order
 from tensortrade.oms.wallets import Wallet, Portfolio
-
+from tensortrade.env.default.rewards import SimpleProfit
+from tensortrade.env.default.actions import ManagedRiskOrders
 
 
 def create_env(config):
-    x = np.arange(0, 2*np.pi, 2*np.pi / 1001)
-    y = 50*np.sin(3*x) + 100
+    df = load_csv('btc_usdt_m5_history.csv')
+    y = df['close'].tolist()
 
     p = Stream.source(y, dtype="float").rename("USD-TTC")
 
@@ -184,12 +207,9 @@ def create_env(config):
         p.log().diff().fillna(0).rename("lr")
     ])
 
-    reward_scheme = PBR(price=p)
+    reward_scheme = SimpleProfit(window_size=12)
 
-    action_scheme = BSH(
-        cash=cash,
-        asset=asset
-    ).attach(reward_scheme)
+    action_scheme = ManagedRiskOrders()
 
     renderer_feed = DataFeed([
         Stream.source(y, dtype="float").rename("price"),
@@ -202,7 +222,7 @@ def create_env(config):
         action_scheme=action_scheme,
         reward_scheme=reward_scheme,
         renderer_feed=renderer_feed,
-        renderer=PositionChangeChart(),
+        renderer=default.renderers.PlotlyTradingChart(),
         window_size=config["window_size"],
         max_allowed_loss=0.6
     )
@@ -213,7 +233,7 @@ register_env("TradingEnv", create_env)
 analysis = tune.run(
     "PPO",
     stop={
-        "episode_reward_mean": 300
+        "episode_reward_mean": 5000
     },
     config={
         "env": "TradingEnv",
@@ -221,12 +241,12 @@ analysis = tune.run(
             "window_size": 25
         },
         "log_level": "DEBUG",
-        "framework": "tf2",
+        "framework": "torch",
         "ignore_worker_failures": True,
-        "num_workers": 1,
+        "num_workers": 2,
         "num_gpus": 0,
         "clip_rewards": True,
-        "lr": 8e-6,
+        "lr": 8e-4,
         "lr_schedule": [
             [0, 1e-1],
             [int(1e2), 1e-2],
@@ -242,21 +262,19 @@ analysis = tune.run(
         "vf_loss_coeff": 0.5,
         "entropy_coeff": 0.01
     },
+    local_dir="./result",
     checkpoint_at_end=True,
-    local_dir=".\\result"
+    checkpoint_freq=20
 )
 
 # Get checkpoint
 checkpoints = analysis.get_trial_checkpoints_paths(
-    trial=analysis.get_best_trial("episode_reward_mean", mode='min'),
+    trial=analysis.get_best_trial("episode_reward_mean", mode='max'),
     metric="episode_reward_mean"
 )
-
-
-
 checkpoint_path = checkpoints[0][0]
-import ray.rllib.agents.ppo as ppo
 
+import ray.rllib.agents.ppo as ppo
 # Restore agent
 agent = ppo.PPOTrainer(
     env="TradingEnv",
@@ -264,7 +282,7 @@ agent = ppo.PPOTrainer(
         "env_config": {
             "window_size": 25
         },
-        "framework": "tf2",
+        "framework": "torch",
         "log_level": "DEBUG",
         "ignore_worker_failures": True,
         "num_workers": 1,
@@ -289,7 +307,6 @@ agent = ppo.PPOTrainer(
 )
 agent.restore(checkpoint_path)
 
-# agent.get_policy().export_model(".\\result\\models")
 # Instantiate the environment
 env = create_env({
     "window_size": 25
@@ -304,4 +321,5 @@ while not done:
     action = agent.compute_action(obs)
     obs, reward, done, info = env.step(action)
     episode_reward += reward
+
 env.render()

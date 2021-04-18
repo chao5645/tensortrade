@@ -183,7 +183,7 @@ agent = ppo.PPOTrainer(
     }
 )
 
-checkpoint_path = "result\\PPO\\PPO_TradingEnv_0ab95_00000_0_2021-04-13_21-49-18\\checkpoint_60\\checkpoint-60"
+checkpoint_path = "result\\PPO\\PPO_TradingEnv_74ab8_00000_0_2021-04-13_22-42-22\\checkpoint_20\\checkpoint-20"
 agent.restore(checkpoint_path)
 
 # Instantiate the environment
@@ -201,6 +201,6 @@ while not done:
     obs, reward, done, info = env_test.step(action)
     episode_reward += reward
 
-    print("Action: {}  Reward: {}  Info: ".format(action, reward, info))
+    print("Action: {}  Reward: {}  Info: {}".format(action, reward, info))
 
 env_test.render()
